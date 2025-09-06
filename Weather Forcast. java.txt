@@ -1,0 +1,62 @@
+import com.google.gson.*;
+import javafx.application.Platform;
+import javafx.scene.control.Label;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+
+import java.io.*;
+import java.net.*;
+
+public class WeatherService {
+    private static final String API_KEY = "YOUR_API_KEY_HERE"; // Replace with your key
+    private static final String BASE_URL = "https://api.openweathermap.org/data/2.5/weather";
+
+    public static void fetchWeather(String city, Label temp, Label humidity, Label desc, ImageView icon) {
+        new Thread(() -> {
+            try {
+                String urlString = BASE_URL + "?q=" + URLEncoder.encode(city, "UTF-8")
+                        + "&appid=" + API_KEY + "&units=metric";
+                URL url = new URL(urlString);
+
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+
+                BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                StringBuilder responseStr = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    responseStr.append(line);
+                }
+                reader.close();
+
+                // Parse JSON
+                JsonObject json = JsonParser.parseString(responseStr.toString()).getAsJsonObject();
+                JsonObject main = json.getAsJsonObject("main");
+                JsonArray weatherArray = json.getAsJsonArray("weather");
+                JsonObject weather = weatherArray.get(0).getAsJsonObject();
+
+                String temperature = main.get("temp").getAsString() + " °C";
+                String humidityVal = main.get("humidity").getAsString() + " %";
+                String description = weather.get("description").getAsString();
+                String iconCode = weather.get("icon").getAsString();
+
+                // Update UI on JavaFX Application Thread
+                Platform.runLater(() -> {
+                    temp.setText("Temperature: " + temperature);
+                    humidity.setText("Humidity: " + humidityVal);
+                    desc.setText("Description: " + description);
+                    Image weatherImg = new Image("https://openweathermap.org/img/wn/" + iconCode + "@2x.png");
+                    icon.setImage(weatherImg);
+                });
+
+            } catch (IOException | JsonSyntaxException e) {
+                Platform.runLater(() -> {
+                    temp.setText("Temperature: N/A");
+                    humidity.setText("Humidity: N/A");
+                    desc.setText("City not found or error occurred.");
+                    icon.setImage(null);
+                });
+            }
+        }).start();
+    }
+}         give code html 
